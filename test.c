@@ -1,23 +1,23 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Vincent_test_parsing.c                             :+:      :+:    :+:   */
+/*   test.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: vbachele <vbachele@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/01/02 16:34:17 by vbachele          #+#    #+#             */
-/*   Updated: 2022/01/05 12:30:32 by vbachele         ###   ########.fr       */
+/*   Created: 2022/01/05 21:37:38 by vbachele          #+#    #+#             */
+/*   Updated: 2022/01/05 22:44:21 by vbachele         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <stdarg.h>
 
-#define STDOUT 1
 #define STDIN 0
+#define STDOUT 1
 #define STDERR 2
 
 #define PIPE 3
@@ -32,38 +32,16 @@ typedef struct s_root
 	char **arg;
 	struct s_root *previous;
 	struct s_root *next;
-} t_root;
+}t_root;
 
 int ft_strlen(char *str)
 {
 	int i;
-	
+
 	i = 0;
-	if (!str)
-		return (0);
 	while (str[i])
 		i++;
 	return (i);
-}
-
-void	exit_cd1(void)
-{
-	write(STDERR, "error: cd: bad arguments\n", ft_strlen("error: cd: bad arguments\n"));
-}
-
-void exit_cd2(char *str)
-{
-	write(STDERR, "error: cd: cannot change directory to ", ft_strlen("error: cd: cannot change directory to "));
-	write(STDERR, str, ft_strlen(str));
-	write(STDERR, "\n", 1);
-}
-
-int exit_execve(char *str)
-{
-	write(STDERR, "error: cannot execute ", ft_strlen("error: cannot execute "));
-	write(STDERR, str, ft_strlen(str));
-	write(STDERR, "\n", 1);
-	exit(EXIT_FAILURE);
 }
 
 int exit_fatal(void)
@@ -72,15 +50,41 @@ int exit_fatal(void)
 	exit(EXIT_FAILURE);
 }
 
+void exit_cd1(void)
+{
+	write(STDERR, "error: cd: bad arguments\n", 25);
+}
+
+void exit_cd2(char *str)
+{
+	int i;
+	
+	i = ft_strlen("error: cd: cannot change directory to ");
+	write(STDERR, "error: cd: cannot change directory to ", i);
+	write(STDERR, str, ft_strlen(str));
+	write(STDERR, "\n", 1);
+}
+
+int exit_execve(char *str)
+{
+	int i;
+	
+	i = ft_strlen("error: cannot execute ");
+	write(STDERR, "error: cannot execute ", i);
+	write(STDERR, str, ft_strlen(str));
+	write(STDERR, "\n", 1);
+	exit(EXIT_FAILURE);
+}
+
 void	ft_free_all(t_root *root)
 {
 	t_root *tmp;
-	int i;
+	int		i;
 	
+	i = 0;
 	while (root)
 	{
 		tmp = root->next;
-		i = 0;
 		while (i < root->size)
 		{
 			free(root->arg[i]);
@@ -100,19 +104,21 @@ char *ft_strdup(char *str)
 	
 	if (!str)
 		return (0);
+	res = NULL;
 	size = ft_strlen(str);
 	res = malloc(sizeof(char) * (size + 1));
+	if (!res)
+		exit_fatal();
 	res[size] = 0;
 	while (--size >= 0)
 		res[size] = str[size];
 	return (res);
-
 }
 
-void ft_lstaddback(t_root **root, t_root *new)
+void	ft_lstaddback(t_root **root, t_root *new)
 {
 	t_root *tmp;
-	
+
 	if (!(*root))
 		*root = new;
 	else
@@ -121,7 +127,7 @@ void ft_lstaddback(t_root **root, t_root *new)
 		while (tmp && tmp->next)
 			tmp = tmp->next;
 		tmp->next = new;
-		new->previous = tmp;	
+		new->previous = tmp;
 	}
 }
 
@@ -136,21 +142,21 @@ int get_type(char *str)
 	return (0);
 }
 
-int get_size(char **argv)
+int	get_size(char **argv)
 {
 	int i;
-
+	
 	i = 0;
-	while(argv[i] && strcmp(argv[i], ";") != 0 && strcmp(argv[i], "|") != 0)
+	while (argv[i] && strcmp(argv[i], "|") != 0 && strcmp(argv[i], ";") != 0)
 		i++;
 	return (i);
 }
 
-int	ft_get_parse(t_root **root, char **argv)
+int ft_get_parse(t_root **root, char **argv)
 {
-	int size;
 	t_root *new;
-
+	int size;
+	
 	size = get_size(argv);
 	new = malloc(sizeof(t_root));
 	if (!new)
@@ -159,17 +165,17 @@ int	ft_get_parse(t_root **root, char **argv)
 	if (!new->arg)
 		exit_fatal();
 	new->size = size;
+	new->type = get_type(argv[size]);
 	new->arg[size] = 0;
 	new->previous = NULL;
 	new->next = NULL;
 	while (--size >= 0)
 		new->arg[size] = ft_strdup(argv[size]);
-	new->type = get_type(argv[new->size]);
 	ft_lstaddback(root, new);
 	return (new->size);
 }
 
-void exec_cmd(t_root *tmp, char **env)
+void	exec_cmd(t_root *tmp, char **env)
 {
 	pid_t pid;
 	int status;
@@ -191,7 +197,7 @@ void exec_cmd(t_root *tmp, char **env)
 			exit_fatal();
 		if (tmp->previous && tmp->previous->type == PIPE && dup2(tmp->previous->fd[STDIN], STDIN) < 0)
 			exit_fatal();
-		if ((execve(tmp->arg[0], tmp->arg, env)) < 0)
+		if (execve(tmp->arg[0], tmp->arg, env))
 			exit_execve(tmp->arg[0]);
 		exit(EXIT_SUCCESS);
 	}
@@ -200,19 +206,22 @@ void exec_cmd(t_root *tmp, char **env)
 		waitpid(pid, &status, 0);
 		if (pipe_open)
 		{
-			close (tmp->fd[STDOUT]);
-			if (!tmp->next || tmp->type == BREAK)
-				close (tmp->fd[STDIN]);
+			close(tmp->fd[STDOUT]);
+			if (!tmp->next || tmp->type	== BREAK)
+				close(tmp->fd[STDIN]);
 		}
-		if (tmp->previous && tmp->previous->type == PIPE)
-			close(tmp->previous->fd[STDIN]);
+		else 
+		{
+			if (tmp->previous && tmp->previous->type == PIPE)
+				close(tmp->previous->fd[STDIN]);
+		}
 	}
 }
 
 void	exec_cmds(t_root *root, char **env)
 {
 	t_root *tmp;
-	
+
 	tmp = root;
 	while (tmp)
 	{
@@ -221,9 +230,9 @@ void	exec_cmds(t_root *root, char **env)
 			if (tmp->size < 2)
 				exit_cd1();
 			else if(chdir(tmp->arg[1]))
-				exit_cd2(tmp->arg[1]);
+				exit_cd2(tmp->arg[1]);			
 		}
-		else
+		else 
 			exec_cmd(tmp, env);
 		tmp = tmp->next;
 	}
@@ -232,7 +241,7 @@ void	exec_cmds(t_root *root, char **env)
 int main(int argc, char **argv, char **env)
 {
 	t_root *root;
-	int i;
+	int		i;
 	
 	root = NULL;
 	if (argc > 1)
@@ -253,7 +262,7 @@ int main(int argc, char **argv, char **env)
 		}
 		if (root)
 			exec_cmds(root, env);
-		ft_free_all(root);
+		// ft_free_all(root);
 	}
 	return (0);
 }
